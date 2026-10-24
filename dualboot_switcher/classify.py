@@ -31,6 +31,8 @@ DEVICE = "device"
 FIRMWARE = "firmware"
 OTHER = "other"
 
+OS_NAMES = {WINDOWS: "Windows", LINUX: "Linux"}
+
 _FIRMWARE_TOOL = re.compile(
     r"\b(setup|boot menu|boot option|diagnos\w*|recovery|rescue|wipe|"
     r"interrupt menu|regulatory|shell|memory test|bios|firmware|app menu)\b",

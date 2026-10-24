@@ -30,3 +30,11 @@ class SwitcherError(Exception):
 
 class EntryNotFoundError(SwitcherError):
     """No boot entry for the other OS was found."""
+
+
+class NotUefiError(SwitcherError):
+    """The machine booted in legacy BIOS mode, so there are no UEFI entries."""
+
+
+class NotAdminError(SwitcherError):
+    """Windows only: bcdedit needs administrator rights."""
