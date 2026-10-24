@@ -1,0 +1,37 @@
+BootCurrent: 0001
+Timeout: 2 seconds
+BootOrder: 0001,001B,0000,001C,0017,0018,0019,001A
+Boot0000* Windows Boot Manager	HD(2,GPT,e9843f70-...,0x40800,0x32000)/File(\EFI\MICROSOFT\BOOT\BOOTMGFW.EFI)
+      dp: 04 01 2a 00 02 00 00 00 00 08 04 00 ... / 04 04 46 00 5c 00 45 00 46 00 49 00 ... / 7f ff 04 00
+Boot0001* debian	HD(2,GPT,e9843f70-...,0x40800,0x32000)/File(\EFI\debian\shimx64.efi)
+      dp: 04 01 2a 00 02 00 00 00 00 08 04 00 ... / 04 04 34 00 5c 00 45 00 46 00 49 00 ... / 7f ff 04 00
+Boot0010  Setup	FvFile(721c8b66-...)
+      dp: 04 06 14 00 66 8b 1c 72 ... / 7f ff 04 00
+Boot0011  Boot Menu	FvFile(126a762d-...)
+      dp: 04 06 14 00 2d 76 6a 12 ... / 7f ff 04 00
+Boot0012  Diagnostic Splash Screen	FvFile(a7d8d9a6-...)
+      dp: 04 06 14 00 a6 d9 d8 a7 ... / 7f ff 04 00
+Boot0013  Lenovo Diagnostics	FvFile(3f7e615b-...)
+      dp: 04 06 14 00 5b 61 7e 3f ... / 7f ff 04 00
+Boot0014  ThinkShield secure wipe	FvFile(3593a0d5-...)
+      dp: 04 06 14 00 d5 a0 93 35 ... / 7f ff 04 00
+Boot0015  Startup Interrupt Menu	FvFile(f46ee6f4-...)
+      dp: 04 06 14 00 f4 e6 6e f4 ... / 7f ff 04 00
+Boot0016  Rescue and Recovery	FvFile(665d3f60-...)
+      dp: 04 06 14 00 60 3f 5d 66 ... / 7f ff 04 00
+Boot0017* USB CD	VenMsg(bc7838d2-...)
+      dp: 03 0a 24 00 d2 38 78 bc 82 0f 60 4d ... / 7f ff 04 00
+Boot0018* USB FDD	VenMsg(bc7838d2-...)
+      dp: 03 0a 24 00 d2 38 78 bc 82 0f 60 4d ... / 7f ff 04 00
+Boot0019* NVMe0	VenMsg(bc7838d2-...)
+      dp: 03 0a 25 00 d2 38 78 bc 82 0f 60 4d ... / 7f ff 04 00
+Boot001A* ATA HDD0	VenMsg(bc7838d2-...)
+      dp: 03 0a 25 00 d2 38 78 bc 82 0f 60 4d ... / 7f ff 04 00
+Boot001B* USB HDD	VenMsg(bc7838d2-...)
+      dp: 03 0a 24 00 d2 38 78 bc 82 0f 60 4d ... / 7f ff 04 00
+Boot001C* PXE BOOT	VenMsg(bc7838d2-...)
+      dp: 03 0a 24 00 d2 38 78 bc 82 0f 60 4d ... / 7f ff 04 00
+Boot001D  Regulatory Information	FvFile(478c92a0-...)
+      dp: 04 06 14 00 a0 92 8c 47 ... / 7f ff 04 00
+Boot001E* Boot Next Boot Option	VenMsg(bc7838d2-...)
+      dp: 03 0a 24 00 d2 38 78 bc 82 0f 60 4d ... / 7f ff 04 00

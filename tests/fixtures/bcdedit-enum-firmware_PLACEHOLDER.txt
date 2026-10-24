@@ -1,0 +1,56 @@
+
+Firmware Boot Manager
+---------------------
+identifier              {fwbootmgr}
+displayorder            {00000000-0000-0000-0000-000000000001}
+                        {bootmgr}
+                        {00000000-0000-0000-0000-000000000004}
+                        {00000000-0000-0000-0000-000000000005}
+                        {00000000-0000-0000-0000-000000000006}
+timeout                 2
+
+Windows Boot Manager
+--------------------
+identifier              {bootmgr}
+device                  partition=\Device\HarddiskVolume1
+path                    \EFI\Microsoft\Boot\bootmgfw.efi
+description             Windows Boot Manager
+locale                  en-US
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {00000000-0000-0000-0000-0000000000ff}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000001}
+device                  partition=\Device\HarddiskVolume1
+path                    \EFI\debian\shimx64.efi
+description             debian
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000002}
+description             Setup
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000003}
+description             ThinkShield secure wipe
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000004}
+description             USB CD
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000005}
+description             NVMe0
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000006}
+description             PXE BOOT

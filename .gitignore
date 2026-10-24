@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Build output (PyInstaller, .deb)
+build/
+dist/
+*.spec
+*.deb
