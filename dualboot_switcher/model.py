@@ -16,12 +16,16 @@ class BootEntry:
             for firmware-provided entries (USB CD, PXE BOOT, Setup, ...).
     active: efibootmgr's "*" flag. bcdedit doesn't show it, so entries
             parsed on Windows are always active.
+    partition_guid: the GPT partition holding path, from efibootmgr's
+            HD(...) node; used to show which disk the entry is on. None on
+            Windows, where bcdedit doesn't show it.
     """
 
     id: str
     label: str
     path: str | None = None
     active: bool = True
+    partition_guid: str | None = None
 
 
 class SwitcherError(Exception):

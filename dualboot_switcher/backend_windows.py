@@ -70,6 +70,12 @@ class WindowsBackend:
     def describe(self, entry: BootEntry) -> list[str]:
         return [subprocess.list2cmdline(argv) for argv in self.commands(entry)]
 
+    def disk_label(self, entry: BootEntry) -> str | None:
+        # bcdedit only shows "partition=\Device\HarddiskVolumeN" for an entry.
+        # Turning that into a disk name takes several Windows API calls, so
+        # it's left out until it can be checked against real bcdedit output.
+        return None
+
     def switch(self, entry: BootEntry) -> None:
         set_boot_next, restart = self.commands(entry)
         result = self._call(set_boot_next)

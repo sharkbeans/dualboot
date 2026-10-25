@@ -31,6 +31,9 @@ class FakeBackend:
     def describe(self, entry):
         return [f"set-boot-next {entry.id}", "reboot"]
 
+    def disk_label(self, entry):
+        return "Test Disk, 512 GB"
+
     def switch(self, entry):
         self.switched = entry
 

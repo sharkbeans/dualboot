@@ -20,6 +20,8 @@ from .model import BootEntry
 _ENTRY = re.compile(r"^Boot([0-9A-Fa-f]{4})(\*?)\s+(.*)$")
 # (?<!\w) so that firmware volume nodes like FvFile(...) don't count.
 _FILE = re.compile(r"(?<!\w)File\(([^)]*)\)")
+# HD(partition number,GPT,partition GUID,start,size)
+_GPT_PARTITION = re.compile(r"HD\(\d+,GPT,([0-9A-Fa-f]{8}-(?:[0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12})")
 
 
 def parse(text: str) -> list[BootEntry]:
@@ -33,10 +35,12 @@ def parse(text: str) -> list[BootEntry]:
         # Older efibootmgr versions append optional data right after the
         # device path, so search for File(...) instead of anchoring it.
         file_match = _FILE.search(device_path)
+        partition_match = _GPT_PARTITION.search(device_path)
         entries.append(BootEntry(
             id=number.upper(),
             label=label.strip(),
             path=file_match.group(1) if file_match else None,
             active=star == "*",
+            partition_guid=partition_match.group(1).lower() if partition_match else None,
         ))
     return entries

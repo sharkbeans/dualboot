@@ -6,6 +6,7 @@ Both backends have the same methods:
     list_entries()           -> [BootEntry]; raises SwitcherError subclasses
     commands(entry)          -> the commands switch() runs, as argv lists
     describe(entry)          -> those commands as text, to show the user
+    disk_label(entry)        -> which disk the entry is on, or None if unknown
     switch(entry)            sets the one-time boot and reboots
 """
 

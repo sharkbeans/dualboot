@@ -26,7 +26,7 @@ def texts(widget):
     """The text of every label and button inside widget."""
     found = []
     for child in widget.winfo_children():
-        if isinstance(child, (ttk.Label, ttk.Button, tk.Label)):
+        if isinstance(child, (ttk.Label, ttk.Button, ttk.Radiobutton, tk.Label)):
             found.append(str(child.cget("text")))
         found.extend(texts(child))
     return found
@@ -47,11 +47,21 @@ class GuiTest(unittest.TestCase):
     def app(self, backend, dry_run=False):
         return App(self.root, backend, dry_run=dry_run, config_path=self.config_path)
 
-    def test_single_target_shows_command(self):
+    def test_single_target_is_selected_with_its_disk(self):
         app = self.app(FakeBackend(LINUX, [WINDOWS_ENTRY, USB]))
-        self.assertIn("Restart into Windows", texts(app.frame))
-        self.assertIn("set-boot-next 0000", app.command_box.get("1.0", "end"))
+        shown = texts(app.frame)
+        self.assertIn("Windows", shown)
+        self.assertIn("Windows Boot Manager\non Test Disk, 512 GB", shown)
+        self.assertEqual(app.choice.get(), "0000")
         self.assertFalse(app.restart_button.instate(["disabled"]))
+
+    def test_command_is_in_hidden_details(self):
+        app = self.app(FakeBackend(LINUX, [WINDOWS_ENTRY, USB]))
+        self.assertIn("set-boot-next 0000", app.command_box.get("1.0", "end"))
+        self.assertEqual(app.details.winfo_manager(), "")  # hidden
+        app.details_button.invoke()
+        self.assertEqual(app.details.winfo_manager(), "pack")
+        self.assertEqual(app.details_button.cget("text"), "Hide details")
 
     def test_dry_run_banner(self):
         app = self.app(FakeBackend(LINUX, [WINDOWS_ENTRY]), dry_run=True)
@@ -74,7 +84,7 @@ class GuiTest(unittest.TestCase):
     def test_no_target_still_offers_entry_list(self):
         app = self.app(FakeBackend(LINUX, [USB]))
         self.assertIn("Can't switch", texts(app.frame))
-        self.assertIn("Show all boot entries", texts(app.frame))
+        self.assertIn("Show details", texts(app.frame))
 
     @mock.patch("tkinter.messagebox.showinfo")
     @mock.patch("tkinter.messagebox.askokcancel", return_value=True)

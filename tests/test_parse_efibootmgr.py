@@ -68,6 +68,14 @@ class OtherFormatsTest(unittest.TestCase):
         entries = parse("BootNext: 0000\nBoot001a* ATA HDD0\tVenMsg(...)\n")
         self.assertEqual([entry.id for entry in entries], ["001A"])
 
+    def test_partition_guid(self):
+        line = ("Boot0001* debian\tHD(2,GPT,E9843F70-5110-4F0E-9EC2-1E16BA0C3213,0x40800,0x32000)"
+                "/File(\\EFI\\debian\\shimx64.efi)")
+        self.assertEqual(parse(line)[0].partition_guid, "e9843f70-5110-4f0e-9ec2-1e16ba0c3213")
+
+    def test_no_partition_guid_for_firmware_entries(self):
+        self.assertIsNone(parse("Boot0010  Setup\tFvFile(721c8b66-...)")[0].partition_guid)
+
     def test_data_lines_are_ignored(self):
         text = "Boot0001* debian\tHD(...)/File(\\EFI\\debian\\shimx64.efi)\n    data: 01 02 03\n"
         self.assertEqual(len(parse(text)), 1)

@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import shlex
 import subprocess
+from pathlib import Path
 
 from .backend import command_output
 from .classify import LINUX
@@ -30,13 +31,13 @@ _PKEXEC_NOT_AUTHORIZED = 127
 class LinuxBackend:
     current_os = LINUX
 
-    def __init__(self, run=subprocess.run, efi_dir="/sys/firmware/efi", helper=HELPER):
+    def __init__(self, run=subprocess.run, root="/", helper=HELPER):
         self._run = run
-        self._efi_dir = efi_dir
+        self._root = Path(root)  # tests point this at a fake /sys and /dev
         self._helper = helper
 
     def list_entries(self) -> list[BootEntry]:
-        if not os.path.isdir(self._efi_dir):
+        if not (self._root / "sys/firmware/efi").is_dir():
             raise NotUefiError(
                 "This machine booted in legacy BIOS mode (/sys/firmware/efi is missing). "
                 "Dual Boot Switcher only works on UEFI systems.")
@@ -53,6 +54,25 @@ class LinuxBackend:
         return [shlex.join(argv) for argv in self.commands(entry)] + [
             f"  which runs, as root: efibootmgr --bootnext {entry.id} && systemctl reboot",
         ]
+
+    def disk_label(self, entry: BootEntry) -> str | None:
+        """The disk an entry boots from, e.g. "SKHynix HFS512GD9TNI-L2B0B, 512 GB".
+
+        Found by following the entry's partition GUID through
+        /dev/disk/by-partuuid and /sys/class/block; no root needed.
+        """
+        if not entry.partition_guid:
+            return None
+        try:
+            link = self._root / "dev/disk/by-partuuid" / entry.partition_guid
+            partition = link.resolve(strict=True).name  # e.g. nvme0n1p2
+            disk = (self._root / "sys/class/block" / partition).resolve(strict=True).parent
+        except OSError:
+            return "disk not found (probably left over from an old install)"
+        model = _read(disk / "device/model").replace("_", " ")
+        sectors = _read(disk / "size")
+        size = _format_size(int(sectors) * 512) if sectors.isdigit() else ""
+        return ", ".join(part for part in (model or disk.name, size) if part)
 
     def switch(self, entry: BootEntry) -> None:
         if not os.path.exists(self._helper):
@@ -73,3 +93,17 @@ class LinuxBackend:
             return self._run(argv, capture_output=True, text=True)
         except FileNotFoundError:
             raise SwitcherError(f"{argv[0]} is not installed.") from None
+
+
+def _read(path: Path) -> str:
+    try:
+        return path.read_text().strip()
+    except OSError:
+        return ""
+
+
+def _format_size(size: int) -> str:
+    # Decimal units, like the size printed on the drive.
+    if size >= 1e12:
+        return f"{size / 1e12:.1f} TB"
+    return f"{size / 1e9:.0f} GB"

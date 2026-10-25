@@ -1,5 +1,6 @@
 """Backend tests. Commands go to a fake runner; nothing is actually executed."""
 
+import os
 import subprocess
 import tempfile
 import unittest
@@ -35,16 +36,17 @@ class FakeRun:
 class LinuxBackendTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.efi_dir = Path(self.tmp.name)
-        self.helper = self.efi_dir / "helper"
+        self.root = Path(self.tmp.name)
+        (self.root / "sys/firmware/efi").mkdir(parents=True)
+        self.helper = self.root / "helper"
         self.helper.touch()
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def backend(self, *results, efi_dir=None):
+    def backend(self, *results):
         self.run = FakeRun(*results)
-        return LinuxBackend(run=self.run, efi_dir=efi_dir or self.efi_dir, helper=str(self.helper))
+        return LinuxBackend(run=self.run, root=self.root, helper=str(self.helper))
 
     def test_list_entries_parses_efibootmgr(self):
         backend = self.backend((0, fixture("efibootmgr-v_lenovo-lmde.txt"), ""))
@@ -53,7 +55,8 @@ class LinuxBackendTest(unittest.TestCase):
         self.assertEqual(entries[0].label, "Windows Boot Manager")
 
     def test_legacy_bios(self):
-        backend = self.backend(efi_dir=self.efi_dir / "missing")
+        (self.root / "sys/firmware/efi").rmdir()
+        backend = self.backend()
         with self.assertRaises(NotUefiError):
             backend.list_entries()
         self.assertEqual(self.run.calls, [])
@@ -66,7 +69,7 @@ class LinuxBackendTest(unittest.TestCase):
     def test_efibootmgr_missing(self):
         def run(argv, **kwargs):
             raise FileNotFoundError(argv[0])
-        backend = LinuxBackend(run=run, efi_dir=self.efi_dir)
+        backend = LinuxBackend(run=run, root=self.root)
         with self.assertRaisesRegex(SwitcherError, "efibootmgr is not installed"):
             backend.list_entries()
 
@@ -98,6 +101,50 @@ class LinuxBackendTest(unittest.TestCase):
             with self.subTest(code=code):
                 with self.assertRaisesRegex(SwitcherError, message):
                     self.backend((code, "", stderr)).switch(WINDOWS_ENTRY)
+
+
+@unittest.skipIf(os.name == "nt", "builds a fake Linux /sys and /dev with symlinks")
+class LinuxDiskLabelTest(unittest.TestCase):
+    GUID = "e9843f70-5110-4f0e-9ec2-1e16ba0c3213"
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.backend = LinuxBackend(root=self.root)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def add_disk(self, model="SKHynix_HFS512GD9TNI-L2B0B   ", sectors="1000215216"):
+        """Lay out the files the kernel provides for nvme0n1 and its partition p2."""
+        disk = self.root / "sys/devices/pci0000:00/nvme/nvme0n1"
+        (disk / "nvme0n1p2").mkdir(parents=True)
+        (disk / "device").mkdir()
+        (disk / "device/model").write_text(model + "\n")
+        (disk / "size").write_text(sectors + "\n")
+        (self.root / "sys/class/block").mkdir(parents=True)
+        (self.root / "sys/class/block/nvme0n1p2").symlink_to(disk / "nvme0n1p2")
+        (self.root / "dev/disk/by-partuuid").mkdir(parents=True)
+        (self.root / "dev/nvme0n1p2").touch()
+        (self.root / "dev/disk/by-partuuid" / self.GUID).symlink_to(self.root / "dev/nvme0n1p2")
+
+    def label(self, guid=GUID):
+        return self.backend.disk_label(BootEntry(id="0000", label="x", partition_guid=guid))
+
+    def test_model_and_size(self):
+        self.add_disk()
+        self.assertEqual(self.label(), "SKHynix HFS512GD9TNI-L2B0B, 512 GB")
+
+    def test_no_model_uses_device_name(self):
+        self.add_disk(model="", sectors="3907029168")
+        self.assertEqual(self.label(), "nvme0n1, 2.0 TB")
+
+    def test_partition_no_longer_exists(self):
+        self.add_disk()
+        self.assertIn("disk not found", self.label("00000000-0000-0000-0000-000000000000"))
+
+    def test_entry_without_partition(self):
+        self.assertIsNone(self.label(None))
 
 
 class WindowsBackendTest(unittest.TestCase):
