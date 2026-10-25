@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds dist/dualboot-switcher_<version>_all.deb from this checkout.
+# Builds dist/dualboot-switcher.deb from this checkout.
 # Needs only dpkg-deb, which every Debian/Ubuntu system has.
 #
 # Every file in the package is owned by root (--root-owner-group) and only
@@ -10,9 +10,9 @@ REPO=$(cd "$(dirname "$0")/../.." && pwd)
 VERSION=$(sed -nE 's/^__version__ = "(.*)"$/\1/p' "$REPO/dualboot_switcher/__init__.py")
 # Debian sorts "~" before everything, so 0.1.0~rc1 comes before 0.1.0.
 DEB_VERSION=${VERSION//-/\~}
-# The file name keeps the "-" (0.1.0-rc1): GitHub doesn't allow "~" in
-# release asset names.
-OUT="$REPO/dist/dualboot-switcher_${VERSION}_all.deb"
+# No version in the file name, so .../releases/latest/download/dualboot-switcher.deb
+# always works. apt reads the version from inside the package.
+OUT="$REPO/dist/dualboot-switcher.deb"
 
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT

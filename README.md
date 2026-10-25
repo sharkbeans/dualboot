@@ -8,9 +8,11 @@ pressing F12 at the right moment.
 
 *Windows screenshot: coming soon.*
 
-**Nothing to set up.** You don't need Git, Python or any developer tools. Download
-one file from the [Releases page](https://github.com/sharkbeans/dualboot/releases)
-and run it.
+**Download:** [Windows (DualBootSwitcher.exe)](https://github.com/sharkbeans/dualboot/releases/latest/download/DualBootSwitcher.exe)
+· [Linux (dualboot-switcher.deb)](https://github.com/sharkbeans/dualboot/releases/latest/download/dualboot-switcher.deb)
+
+**Nothing to set up.** You don't need Git, Python or any developer tools: download
+one file and run it.
 
 Works on PCs that boot in **UEFI mode** (almost every PC from the last ten
 years) with Windows 10/11 and a Debian-based Linux such as Ubuntu, Linux Mint,
@@ -20,8 +22,7 @@ LMDE or Debian.
 
 ### Windows
 
-1. Download `DualBootSwitcher-<version>.exe` from the
-   [latest release](https://github.com/sharkbeans/dualboot/releases).
+1. Download [DualBootSwitcher.exe](https://github.com/sharkbeans/dualboot/releases/latest/download/DualBootSwitcher.exe).
 2. Double-click it. Windows asks for administrator permission (the app needs
    it to read and set the boot entry). Click **Yes**.
 
@@ -34,17 +35,17 @@ Click **More info**, then **Run anyway**. The source code is all in this
 repository, the release files are built from it by GitHub Actions (see
 [the workflow](.github/workflows/release.yml)), and the app shows the exact
 commands it runs under **Show details** before it does anything. Some antivirus
-programs also flag apps built with PyInstaller by mistake; checksums for each
-release are in `SHA256SUMS.txt`.
+programs also flag apps built with PyInstaller by mistake; each release's
+notes list the SHA-256 checksums of its files.
 
 ### Linux (Debian, Ubuntu, Linux Mint, LMDE)
 
-1. Download `dualboot-switcher_<version>_all.deb` from the
-   [latest release](https://github.com/sharkbeans/dualboot/releases).
-2. Double-click it to open it in your package installer, or run:
+1. Download [dualboot-switcher.deb](https://github.com/sharkbeans/dualboot/releases/latest/download/dualboot-switcher.deb).
+2. Double-click it to open it in your package installer, or run this in the
+   folder you downloaded it to:
 
    ```bash
-   sudo apt install ./dualboot-switcher_*_all.deb
+   sudo apt install ./dualboot-switcher.deb
    ```
 
    apt installs what it needs (Python 3, Tk, efibootmgr, pkexec) automatically.
@@ -67,7 +68,7 @@ On Linux you're asked for your password; it's remembered for a few minutes.
 everything except changing the boot entry and restarting.
 
 - Linux: `dualboot-switcher --dry-run`
-- Windows: press Win+R and run `"C:\path\to\DualBootSwitcher-<version>.exe" --dry-run`
+- Windows: press Win+R and run `"C:\path\to\DualBootSwitcher.exe" --dry-run`
 
 On Linux there's also a command line: `dualboot-switcher list` shows every boot
 entry and what the app would pick, and `dualboot-switcher switch --dry-run`
@@ -197,7 +198,7 @@ The app is plain Python 3.10+ with Tkinter and no other dependencies.
 python3 -m unittest                          # run the tests
 python3 -m dualboot_switcher --dry-run       # open the window from the source tree
 python3 -m dualboot_switcher list            # command line
-./packaging/linux/build-deb.sh               # build dist/dualboot-switcher_<version>_all.deb
+./packaging/linux/build-deb.sh               # build dist/dualboot-switcher.deb
 ```
 
 The Windows .exe is built by GitHub Actions with PyInstaller
