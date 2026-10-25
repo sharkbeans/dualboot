@@ -171,6 +171,13 @@ recreate it:
 - Linux entry (Debian/Ubuntu/Mint): in Linux, run
   `sudo grub-install && sudo update-grub`.
 
+**From Windows, I land in the GRUB menu.** That's expected if GRUB is set
+to show its menu: the app makes the firmware start Linux's boot loader, and
+GRUB then does what it's configured to do (it boots the default entry when
+the countdown ends). To skip the menu, set `GRUB_TIMEOUT_STYLE=hidden` and
+`GRUB_TIMEOUT=0` in `/etc/default/grub`, then run `sudo update-grub`; press
+Esc while the PC starts when you do want the menu.
+
 **Linux won't start, with a Secure Boot or "verification failed" error.**
 With Secure Boot on, the firmware only starts signed boot loaders. Linux
 distributions handle that through `shimx64.efi`. If the Linux entry points

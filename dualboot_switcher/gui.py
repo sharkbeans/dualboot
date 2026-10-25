@@ -164,6 +164,7 @@ class App:
                 self.details.pack_forget()
                 self.details_button.configure(text="Show details")
             else:
+                self._update_table()  # also scrolls it back to the top
                 self.details.pack(fill="x", pady=(16, 0), after=buttons)
                 self.details_button.configure(text="Hide details")
 
@@ -213,6 +214,9 @@ class App:
         box.insert("1.0", text)
         box.configure(state="disabled", height=min(len(lines), max_rows),
                       width=min(width, max_columns) if max_columns else width)
+        # Start at the top-left, however it was scrolled before.
+        box.yview_moveto(0)
+        box.xview_moveto(0)
 
     # Actions
 

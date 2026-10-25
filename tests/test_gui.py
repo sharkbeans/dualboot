@@ -1,5 +1,6 @@
 """GUI tests. Skipped where tkinter or a display isn't available."""
 
+import subprocess
 import tempfile
 import time
 import unittest
@@ -7,9 +8,11 @@ from pathlib import Path
 from unittest import mock
 
 from dualboot_switcher import config
+from dualboot_switcher.backend_linux import LinuxBackend
 from dualboot_switcher.classify import LINUX, WINDOWS
 from dualboot_switcher.model import BootEntry, SwitcherError
 
+from . import fixture
 from .test_cli import FEDORA, UBUNTU, USB, WINDOWS_ENTRY, FakeBackend, windows_backend
 
 USB_FALLBACK = BootEntry(id="0005", label="UEFI: SanDisk", path=r"\EFI\BOOT\BOOTX64.EFI")
@@ -69,6 +72,50 @@ class GuiTest(unittest.TestCase):
         app = self.app(windows_backend("bcdedit_firmware_en_us.txt"))
         self.assertEqual(int(app.table_box.cget("height")), 10)
         self.assertLessEqual(int(app.table_box.cget("width")), 100)
+
+    def test_table_opens_at_the_top(self):
+        app = self.app(windows_backend("bcdedit_firmware_en_us.txt"))
+        app.details_button.invoke()
+        self.root.update()
+        self.assertEqual(app.table_box.yview()[0], 0.0)
+        self.assertTrue(app.table_box.get("@0,0 linestart", "@0,0 lineend").startswith("ID "))
+
+    def test_table_goes_back_to_the_top(self):
+        app = self.app(windows_backend("bcdedit_firmware_en_us.txt"))
+        app.details_button.invoke()
+        for action in ["tick the checkbox", "hide and show details"]:
+            with self.subTest(action=action):
+                app.table_box.yview_scroll(3, "units")
+                app.table_box.xview_scroll(5, "units")
+                self.root.update()
+                self.assertGreater(app.table_box.yview()[0], 0.0)
+                if action == "tick the checkbox":
+                    app.show_other.set(not app.show_other.get())
+                    app._update_table()
+                else:
+                    app.details_button.invoke()
+                    app.details_button.invoke()
+                self.root.update()
+                self.assertEqual((app.table_box.yview()[0], app.table_box.xview()[0]), (0.0, 0.0))
+
+    def test_linux_table(self):
+        # The real Linux backend, with efibootmgr printing the Lenovo fixture
+        # plus a USB stick's fallback loader (an "other" entry).
+        root = Path(self.tmp.name) / "root"
+        (root / "sys/firmware/efi").mkdir(parents=True)
+        text = (fixture("efibootmgr-v_lenovo-lmde.txt")
+                + "Boot0005* UEFI: SanDisk\tHD(1,GPT,...)/File(\\EFI\\BOOT\\BOOTX64.EFI)\n")
+        backend = LinuxBackend(root=root, run=lambda argv, **kwargs:
+                               subprocess.CompletedProcess(argv, 0, text, ""))
+        app = self.app(backend)
+        table = app.table_box.get("1.0", "end")
+        self.assertEqual(table.split()[:3], ["ID", "ACTIVE", "KIND"])  # real flags on Linux
+        self.assertIn("0010  no ", table)
+        self.assertNotIn("UEFI: SanDisk", table)
+        self.assertEqual(int(app.table_box.cget("height")), 10)
+        app.show_other.set(True)
+        app._update_table()
+        self.assertIn("UEFI: SanDisk", app.table_box.get("1.0", "end"))
 
     def test_copy_has_system_info_and_every_entry(self):
         app = self.app(FakeBackend(LINUX, [WINDOWS_ENTRY, USB, USB_FALLBACK]))
