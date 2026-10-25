@@ -1,4 +1,9 @@
-"""Command line: `dualboot-switcher list` and `dualboot-switcher switch`."""
+"""Command line: `dualboot-switcher list` and `dualboot-switcher switch`.
+
+Running `dualboot-switcher` with no command opens the window instead (see
+__main__.py). The Windows .exe only has the window, since a windowed .exe
+has no console to print to.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +29,9 @@ def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="dualboot-switcher",
         description="Reboot a UEFI dual-boot machine straight into the other OS, "
-                    "using a one-time boot override.")
+                    "using a one-time boot override.",
+        epilog="Run without a command to open the window; add --dry-run to try it "
+               "without changing anything.")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     commands = parser.add_subparsers(dest="command", required=True)
 
@@ -43,7 +50,7 @@ def _parser() -> argparse.ArgumentParser:
 
 def _list(args, backend, config_path) -> int:
     entries = backend.list_entries()
-    _print_table(entries)
+    print(format_table(entries))
     print()
     target, candidates = pick_target(entries, backend.current_os, *config.load_choice(config_path))
     if target is None:
@@ -92,14 +99,16 @@ def _switch(args, backend, config_path) -> int:
     return 0
 
 
-def _print_table(entries: list[BootEntry]) -> None:
+def format_table(entries: list[BootEntry]) -> str:
+    """All boot entries as a text table. The GUI shows this too."""
     id_width = max([len(entry.id) for entry in entries] + [2])
     label_width = max([len(entry.label) for entry in entries] + [5])
-    print(f"{'ID':<{id_width}}  ACTIVE  {'KIND':<8}  {'LABEL':<{label_width}}  PATH")
+    lines = [f"{'ID':<{id_width}}  ACTIVE  {'KIND':<8}  {'LABEL':<{label_width}}  PATH"]
     for entry in entries:
         active = "yes" if entry.active else "no"
-        print(f"{entry.id:<{id_width}}  {active:<6}  {classify(entry):<8}  "
-              f"{entry.label:<{label_width}}  {entry.path or '-'}")
+        lines.append(f"{entry.id:<{id_width}}  {active:<6}  {classify(entry):<8}  "
+                     f"{entry.label:<{label_width}}  {entry.path or '-'}")
+    return "\n".join(lines)
 
 
 def _find(candidates: list[BootEntry], wanted: str) -> BootEntry:
