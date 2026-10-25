@@ -100,13 +100,19 @@ def _switch(args, backend, config_path) -> int:
 
 
 def format_table(entries: list[BootEntry]) -> str:
-    """All boot entries as a text table. The GUI shows this too."""
+    """Boot entries as a text table. The GUI shows this too.
+
+    The ACTIVE column only appears when the flag is known, which it isn't
+    on Windows (bcdedit doesn't show it).
+    """
+    show_active = any(entry.active is not None for entry in entries)
     id_width = max([len(entry.id) for entry in entries] + [2])
     label_width = max([len(entry.label) for entry in entries] + [5])
-    lines = [f"{'ID':<{id_width}}  ACTIVE  {'KIND':<8}  {'LABEL':<{label_width}}  PATH"]
+    active = "ACTIVE  " if show_active else ""
+    lines = [f"{'ID':<{id_width}}  {active}{'KIND':<8}  {'LABEL':<{label_width}}  PATH"]
     for entry in entries:
-        active = "yes" if entry.active else "no"
-        lines.append(f"{entry.id:<{id_width}}  {active:<6}  {classify(entry):<8}  "
+        active = f"{'yes' if entry.active else 'no':<6}  " if show_active else ""
+        lines.append(f"{entry.id:<{id_width}}  {active}{classify(entry):<8}  "
                      f"{entry.label:<{label_width}}  {entry.path or '-'}")
     return "\n".join(lines)
 

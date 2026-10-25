@@ -1,8 +1,7 @@
 """Tests for the bcdedit parser.
 
-PLACEHOLDER: the fixture used here is hand-written, not real bcdedit output.
-Once real output from the Windows side is available it will be added as a
-second fixture and these tests will run against both.
+bcdedit_firmware_en_us.txt is real `bcdedit /enum firmware` output from
+Windows 11 (en-US) on a Lenovo ThinkPad with LMDE 7, GUIDs replaced.
 """
 
 import unittest
@@ -12,39 +11,57 @@ from dualboot_switcher.parse_bcdedit import parse
 
 from . import fixture
 
-DEBIAN_ID = "{00000000-0000-0000-0000-000000000001}"
+
+def fake(n):
+    """The fake GUID that stands in for a real one in the fixtures."""
+    return "{00000000-0000-0000-0000-0000000000%02d}" % n
 
 
-class PlaceholderFixtureTest(unittest.TestCase):
+class RealOutputTest(unittest.TestCase):
     def setUp(self):
-        self.text = fixture("bcdedit-enum-firmware_PLACEHOLDER.txt")
+        self.text = fixture("bcdedit_firmware_en_us.txt")
         self.entries = parse(self.text)
         self.by_id = {entry.id: entry for entry in self.entries}
 
-    def test_skips_firmware_boot_manager_and_displayorder_lines(self):
-        self.assertEqual(
-            [entry.id for entry in self.entries],
-            ["{bootmgr}"] + ["{00000000-0000-0000-0000-00000000000%d}" % n for n in range(1, 7)],
-        )
+    def test_every_entry_once_in_order(self):
+        # {fwbootmgr} is the firmware boot manager itself, not an entry, and
+        # the GUIDs continuing its displayorder line must not become entries.
+        self.assertEqual([entry.id for entry in self.entries],
+                         ["{bootmgr}"] + [fake(n) for n in range(1, 18)])
 
-    def test_windows_boot_manager(self):
-        self.assertEqual(self.by_id["{bootmgr}"], BootEntry(
-            id="{bootmgr}",
-            label="Windows Boot Manager",
-            path=r"\EFI\Microsoft\Boot\bootmgfw.efi",
-        ))
+    def test_bootmgr_block_has_no_path(self):
+        self.assertEqual(self.by_id["{bootmgr}"],
+                         BootEntry(id="{bootmgr}", label="Windows Boot Manager"))
 
     def test_linux_entry(self):
-        self.assertEqual(self.by_id[DEBIAN_ID], BootEntry(
-            id=DEBIAN_ID, label="debian", path=r"\EFI\debian\shimx64.efi",
-        ))
+        self.assertEqual(self.by_id[fake(1)],
+                         BootEntry(id=fake(1), label="debian", path=r"\EFI\debian\shimx64.efi"))
 
-    def test_device_entry_has_no_path(self):
-        entry = self.by_id["{00000000-0000-0000-0000-000000000004}"]
-        self.assertEqual((entry.label, entry.path), ("USB CD", None))
+    def test_windows_firmware_entry_keeps_its_uppercase_path(self):
+        self.assertEqual(self.by_id[fake(2)],
+                         BootEntry(id=fake(2), label="Windows Boot Manager",
+                                   path=r"\EFI\MICROSOFT\BOOT\BOOTMGFW.EFI"))
+
+    def test_device_and_firmware_entries_have_no_path(self):
+        for n, label in [(3, "USB HDD"), (4, "PXE BOOT"), (13, "ThinkShield secure wipe")]:
+            with self.subTest(label=label):
+                self.assertEqual(self.by_id[fake(n)], BootEntry(id=fake(n), label=label))
+
+    def test_active_flag_is_unknown(self):
+        # bcdedit doesn't show one, so the parser mustn't make one up.
+        self.assertTrue(all(entry.active is None for entry in self.entries))
 
     def test_windows_line_endings(self):
         self.assertEqual(parse(self.text.replace("\n", "\r\n")), self.entries)
+
+    def test_section_titles_are_not_needed(self):
+        # Titles like "Firmware Application (101fffff)" are translated, so
+        # the parser must work whatever they say.
+        lines = self.text.splitlines()
+        garbled = ["Xq7 zzkw (%d)" % i if i + 1 < len(lines) and set(lines[i + 1]) == {"-"}
+                   else line for i, line in enumerate(lines)]
+        self.assertNotIn("Firmware Application", "\n".join(garbled))
+        self.assertEqual(parse("\n".join(garbled)), self.entries)
 
 
 class LocalizedOutputTest(unittest.TestCase):
@@ -57,38 +74,38 @@ class LocalizedOutputTest(unittest.TestCase):
             "\n"
             "Firmwareanwendung (101fffff)\n"
             "----------------------------\n"
-            "Bezeichner              " + DEBIAN_ID + "\n"
+            "Bezeichner              " + fake(1) + "\n"
             "device                  partition=\\Device\\HarddiskVolume1\n"
             "path                    \\EFI\\debian\\shimx64.efi\n"
             "description             debian\n"
         )
         self.assertEqual(parse(text), [
-            BootEntry(id=DEBIAN_ID, label="debian", path=r"\EFI\debian\shimx64.efi"),
+            BootEntry(id=fake(1), label="debian", path=r"\EFI\debian\shimx64.efi"),
         ])
 
     def test_every_key_translated(self):
         text = (
             "Firmwareanwendung (101fffff)\n"
             "----------------------------\n"
-            "Bezeichner              " + DEBIAN_ID + "\n"
+            "Bezeichner              " + fake(1) + "\n"
             "Gerät                   partition=\\Device\\HarddiskVolume1\n"
             "Pfad                    \\EFI\\debian\\shimx64.efi\n"
             "Beschreibung            debian\n"
         )
         self.assertEqual(parse(text), [
-            BootEntry(id=DEBIAN_ID, label="debian", path=r"\EFI\debian\shimx64.efi"),
+            BootEntry(id=fake(1), label="debian", path=r"\EFI\debian\shimx64.efi"),
         ])
 
     def test_unknown_description_key_still_finds_path(self):
         text = (
             "Application\n"
             "-----------\n"
-            "xyz                     " + DEBIAN_ID + "\n"
+            "xyz                     " + fake(1) + "\n"
             "abc                     \\EFI\\debian\\shimx64.efi\n"
             "qqq                     debian\n"
         )
         self.assertEqual(parse(text), [
-            BootEntry(id=DEBIAN_ID, label="", path=r"\EFI\debian\shimx64.efi"),
+            BootEntry(id=fake(1), label="", path=r"\EFI\debian\shimx64.efi"),
         ])
 
 

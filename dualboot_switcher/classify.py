@@ -3,6 +3,8 @@ r"""Work out which UEFI boot entries belong to which OS, and pick the target.
 Each entry gets one kind. The rules are checked in order and the first
 match wins:
 
+0. The id is a bcdedit name like {bootmgr} rather than a GUID: that's
+   one of Windows' own boot objects, not a firmware boot entry -> OTHER
 1. The label names a firmware tool (Setup, Boot Menu,
    Diagnostics, Recovery, secure wipe, ...)               -> FIRMWARE
 2. The label names a device (USB CD, PXE BOOT, NVMe0, ...) -> DEVICE
@@ -33,6 +35,7 @@ OTHER = "other"
 
 OS_NAMES = {WINDOWS: "Windows", LINUX: "Linux"}
 
+_BCD_NAME = re.compile(r"^\{[a-z]+\}$", re.IGNORECASE)  # {bootmgr}, {fwbootmgr}, ...
 _FIRMWARE_TOOL = re.compile(
     r"\b(setup|boot menu|boot option|diagnos\w*|recovery|rescue|wipe|"
     r"interrupt menu|regulatory|shell|memory test|bios|firmware|app menu)\b",
@@ -57,6 +60,8 @@ _LINUX_NAME_IN_LABEL = re.compile(r"\b(" + "|".join(_LINUX_NAMES) + r")\b", re.I
 
 def classify(entry: BootEntry) -> str:
     """Return the kind of a boot entry: WINDOWS, LINUX, DEVICE, FIRMWARE or OTHER."""
+    if _BCD_NAME.match(entry.id):
+        return OTHER
     if _FIRMWARE_TOOL.search(entry.label):
         return FIRMWARE
     if _DEVICE.search(entry.label):
@@ -84,9 +89,13 @@ def target_kind(current_os: str) -> str:
 
 
 def find_candidates(entries: list[BootEntry], current_os: str) -> list[BootEntry]:
-    """Active entries for the other OS, in the order they were listed."""
+    """Entries for the other OS, in the order they were listed.
+
+    Entries efibootmgr marks inactive are left out; bcdedit doesn't say, so
+    entries with an unknown flag count as active.
+    """
     kind = target_kind(current_os)
-    return [e for e in entries if e.active and classify(e) == kind]
+    return [e for e in entries if e.active is not False and classify(e) == kind]
 
 
 def pick_target(entries: list[BootEntry], current_os: str,

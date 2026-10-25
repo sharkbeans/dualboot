@@ -19,6 +19,7 @@ from __future__ import annotations
 import ctypes
 import ntpath
 import os
+import platform
 import subprocess
 
 from .backend import command_output
@@ -75,6 +76,11 @@ class WindowsBackend:
         # Turning that into a disk name takes several Windows API calls, so
         # it's left out until it can be checked against real bcdedit output.
         return None
+
+    def system_info(self) -> str:
+        """E.g. "Windows 10.0.22621, UEFI"."""
+        firmware = {1: "legacy BIOS", 2: "UEFI"}.get(self._firmware_type(), "firmware unknown")
+        return f"Windows {platform.version()}, {firmware}"
 
     def switch(self, entry: BootEntry) -> None:
         set_boot_next, restart = self.commands(entry)

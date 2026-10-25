@@ -50,11 +50,75 @@ class LenovoLmdeFixtureTest(unittest.TestCase):
         self.assertEqual((target.id, target.label), ("0001", "debian"))
 
 
-class PlaceholderBcdeditFixtureTest(unittest.TestCase):
-    def test_from_windows_picks_debian(self):
-        entries = parse_bcdedit.parse(fixture("bcdedit-enum-firmware_PLACEHOLDER.txt"))
-        target, _ = pick_target(entries, WINDOWS)
-        self.assertEqual(target.id, "{00000000-0000-0000-0000-000000000001}")
+def fake(n):
+    return "{00000000-0000-0000-0000-0000000000%02d}" % n
+
+
+# The KIND column of the app's own "Copy boot entries" output (v0.1.0-rc2)
+# on the machine bcdedit_firmware_en_us.txt comes from, GUIDs replaced.
+# Checked by hand against that machine's firmware setup.
+WINDOWS_GOLDEN = [
+    ("{bootmgr}", "Windows Boot Manager", OTHER),
+    (fake(1), "debian", LINUX),
+    (fake(2), "Windows Boot Manager", WINDOWS),
+    (fake(3), "USB HDD", DEVICE),
+    (fake(4), "PXE BOOT", DEVICE),
+    (fake(5), "USB CD", DEVICE),
+    (fake(6), "USB FDD", DEVICE),
+    (fake(7), "NVMe0", DEVICE),
+    (fake(8), "ATA HDD0", DEVICE),
+    (fake(9), "Setup", FIRMWARE),
+    (fake(10), "Boot Menu", FIRMWARE),
+    (fake(11), "Diagnostic Splash Screen", FIRMWARE),
+    (fake(12), "Lenovo Diagnostics", FIRMWARE),
+    (fake(13), "ThinkShield secure wipe", FIRMWARE),
+    (fake(14), "Startup Interrupt Menu", FIRMWARE),
+    (fake(15), "Rescue and Recovery", FIRMWARE),
+    (fake(16), "Regulatory Information", FIRMWARE),
+    (fake(17), "Boot Next Boot Option", FIRMWARE),
+]
+
+
+class RealBcdeditOutputTest(unittest.TestCase):
+    def setUp(self):
+        self.entries = parse_bcdedit.parse(fixture("bcdedit_firmware_en_us.txt"))
+
+    def test_kinds_match_the_golden_table(self):
+        self.assertEqual([(e.id, e.label, classify(e)) for e in self.entries], WINDOWS_GOLDEN)
+
+    def test_debian_is_the_only_target(self):
+        target, candidates = pick_target(self.entries, WINDOWS)
+        self.assertEqual((target.id, target.label), (fake(1), "debian"))
+        self.assertEqual(candidates, [target])
+
+    def test_bootmgr_is_excluded_by_its_identifier(self):
+        # On some PCs the {bootmgr} block does have the bootmgfw.efi path.
+        bootmgr = BootEntry(id="{bootmgr}", label="Windows Boot Manager",
+                            path=r"\EFI\Microsoft\Boot\bootmgfw.efi")
+        self.assertEqual(classify(bootmgr), OTHER)
+        with self.assertRaises(EntryNotFoundError):
+            pick_target([bootmgr], LINUX)
+
+
+class TwoLinuxEntriesTest(unittest.TestCase):
+    """bcdedit_firmware_two_linux.txt: the real output plus an ubuntu entry."""
+
+    def setUp(self):
+        self.entries = parse_bcdedit.parse(fixture("bcdedit_firmware_two_linux.txt"))
+
+    def test_user_must_choose(self):
+        target, candidates = pick_target(self.entries, WINDOWS)
+        self.assertIsNone(target)
+        self.assertEqual([(e.id, e.label) for e in candidates],
+                         [(fake(1), "debian"), (fake(18), "ubuntu")])
+
+    def test_cached_choice(self):
+        target, _ = pick_target(self.entries, WINDOWS, cached_id=fake(18), cached_label="ubuntu")
+        self.assertEqual(target.path, r"\EFI\ubuntu\grubx64.efi")
+
+    def test_stale_cached_choice(self):
+        target, _ = pick_target(self.entries, WINDOWS, cached_id=fake(18), cached_label="Fedora")
+        self.assertIsNone(target)
 
 
 class ClassifyTest(unittest.TestCase):
@@ -112,9 +176,9 @@ class PickTargetTest(unittest.TestCase):
         self.assertEqual(target, self.fedora)
 
     def test_cached_id_is_case_insensitive(self):
-        a = entry("ubuntu", r"\EFI\ubuntu\shimx64.efi", id="{AAAA}")
-        b = entry("Fedora", r"\EFI\fedora\shimx64.efi", id="{bbbb}")
-        target, _ = pick_target([a, b], WINDOWS, cached_id="{BBBB}", cached_label="Fedora")
+        a = entry("ubuntu", r"\EFI\ubuntu\shimx64.efi", id="{AAAA-0001}")
+        b = entry("Fedora", r"\EFI\fedora\shimx64.efi", id="{bbbb-0002}")
+        target, _ = pick_target([a, b], WINDOWS, cached_id="{BBBB-0002}", cached_label="Fedora")
         self.assertEqual(target, b)
 
     def test_stale_cache_is_ignored(self):

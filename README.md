@@ -109,7 +109,8 @@ asked again.
 ## Safety
 
 - **Open source, commands visible.** Click **Show details** to see the exact
-  command before you restart, and every boot entry the app found.
+  command before you restart, and the boot entries the app found (tick **Show
+  other entries** to include Windows' own internal ones, like `{bootmgr}`).
 - **One-time only.** It only ever sets the one-time override, never the
   permanent boot order.
 - **It asks first.** Restarting always needs a confirmation, which warns

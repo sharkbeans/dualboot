@@ -1,9 +1,9 @@
 BootCurrent: 0001
 Timeout: 2 seconds
 BootOrder: 0001,001B,0000,001C,0017,0018,0019,001A
-Boot0000* Windows Boot Manager	HD(2,GPT,e9843f70-...,0x40800,0x32000)/File(\EFI\MICROSOFT\BOOT\BOOTMGFW.EFI)
+Boot0000* Windows Boot Manager	HD(2,GPT,00000000-...,0x40800,0x32000)/File(\EFI\MICROSOFT\BOOT\BOOTMGFW.EFI)
       dp: 04 01 2a 00 02 00 00 00 00 08 04 00 ... / 04 04 46 00 5c 00 45 00 46 00 49 00 ... / 7f ff 04 00
-Boot0001* debian	HD(2,GPT,e9843f70-...,0x40800,0x32000)/File(\EFI\debian\shimx64.efi)
+Boot0001* debian	HD(2,GPT,00000000-...,0x40800,0x32000)/File(\EFI\debian\shimx64.efi)
       dp: 04 01 2a 00 02 00 00 00 00 08 04 00 ... / 04 04 34 00 5c 00 45 00 46 00 49 00 ... / 7f ff 04 00
 Boot0010  Setup	FvFile(721c8b66-...)
       dp: 04 06 14 00 66 8b 1c 72 ... / 7f ff 04 00

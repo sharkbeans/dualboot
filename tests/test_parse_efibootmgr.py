@@ -69,9 +69,9 @@ class OtherFormatsTest(unittest.TestCase):
         self.assertEqual([entry.id for entry in entries], ["001A"])
 
     def test_partition_guid(self):
-        line = ("Boot0001* debian\tHD(2,GPT,E9843F70-5110-4F0E-9EC2-1E16BA0C3213,0x40800,0x32000)"
+        line = ("Boot0001* debian\tHD(2,GPT,12345678-90AB-CDEF-1234-567890ABCDEF,0x40800,0x32000)"
                 "/File(\\EFI\\debian\\shimx64.efi)")
-        self.assertEqual(parse(line)[0].partition_guid, "e9843f70-5110-4f0e-9ec2-1e16ba0c3213")
+        self.assertEqual(parse(line)[0].partition_guid, "12345678-90ab-cdef-1234-567890abcdef")
 
     def test_no_partition_guid_for_firmware_entries(self):
         self.assertIsNone(parse("Boot0010  Setup\tFvFile(721c8b66-...)")[0].partition_guid)

@@ -1,0 +1,122 @@
+Firmware Boot Manager
+---------------------
+identifier              {fwbootmgr}
+displayorder            {00000000-0000-0000-0000-000000000001}
+                        {00000000-0000-0000-0000-000000000018}
+                        {00000000-0000-0000-0000-000000000003}
+                        {00000000-0000-0000-0000-000000000002}
+                        {00000000-0000-0000-0000-000000000004}
+                        {00000000-0000-0000-0000-000000000005}
+                        {00000000-0000-0000-0000-000000000006}
+                        {00000000-0000-0000-0000-000000000007}
+                        {00000000-0000-0000-0000-000000000008}
+timeout                 2
+
+Windows Boot Manager
+--------------------
+identifier              {bootmgr}
+device                  partition=D:
+description             Windows Boot Manager
+locale                  en-US
+inherit                 {globalsettings}
+default                 {current}
+resumeobject            {00000000-0000-0000-0000-000000000099}
+displayorder            {current}
+toolsdisplayorder       {memdiag}
+timeout                 30
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000001}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\debian\shimx64.efi
+description             debian
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000018}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\ubuntu\grubx64.efi
+description             ubuntu
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000002}
+device                  partition=\Device\HarddiskVolume2
+path                    \EFI\MICROSOFT\BOOT\BOOTMGFW.EFI
+description             Windows Boot Manager
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000003}
+description             USB HDD
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000004}
+description             PXE BOOT
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000005}
+description             USB CD
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000006}
+description             USB FDD
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000007}
+description             NVMe0
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000008}
+description             ATA HDD0
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000009}
+description             Setup
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000010}
+description             Boot Menu
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000011}
+description             Diagnostic Splash Screen
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000012}
+description             Lenovo Diagnostics
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000013}
+description             ThinkShield secure wipe
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000014}
+description             Startup Interrupt Menu
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000015}
+description             Rescue and Recovery
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000016}
+description             Regulatory Information
+
+Firmware Application (101fffff)
+-------------------------------
+identifier              {00000000-0000-0000-0000-000000000017}
+description             Boot Next Boot Option

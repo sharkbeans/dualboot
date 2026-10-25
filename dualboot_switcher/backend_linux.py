@@ -12,6 +12,7 @@ override, BootOrder is never touched) and reboots.
 from __future__ import annotations
 
 import os
+import platform
 import shlex
 import subprocess
 from pathlib import Path
@@ -73,6 +74,15 @@ class LinuxBackend:
         sectors = _read(disk / "size")
         size = _format_size(int(sectors) * 512) if sectors.isdigit() else ""
         return ", ".join(part for part in (model or disk.name, size) if part)
+
+    def system_info(self) -> str:
+        """E.g. "LMDE 7 (gigi), kernel 6.12.48+deb13-amd64, UEFI"."""
+        try:
+            name = platform.freedesktop_os_release().get("PRETTY_NAME", "Linux")
+        except OSError:
+            name = "Linux"
+        firmware = "UEFI" if (self._root / "sys/firmware/efi").is_dir() else "legacy BIOS"
+        return f"{name}, kernel {platform.release()}, {firmware}"
 
     def switch(self, entry: BootEntry) -> None:
         if not os.path.exists(self._helper):

@@ -14,8 +14,8 @@ class BootEntry:
     label:  the entry's description, e.g. "debian" or "Windows Boot Manager".
     path:   the EFI file it boots, e.g. "\EFI\debian\shimx64.efi", or None
             for firmware-provided entries (USB CD, PXE BOOT, Setup, ...).
-    active: efibootmgr's "*" flag. bcdedit doesn't show it, so entries
-            parsed on Windows are always active.
+    active: efibootmgr's "*" flag. None when unknown: bcdedit doesn't show
+            it, so entries parsed on Windows have None.
     partition_guid: the GPT partition holding path, from efibootmgr's
             HD(...) node; used to show which disk the entry is on. None on
             Windows, where bcdedit doesn't show it.
@@ -24,7 +24,7 @@ class BootEntry:
     id: str
     label: str
     path: str | None = None
-    active: bool = True
+    active: bool | None = None
     partition_guid: str | None = None
 
 

@@ -5,9 +5,11 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from dualboot_switcher.backend_linux import LinuxBackend
 from dualboot_switcher.backend_windows import BCDEDIT, SHUTDOWN, WindowsBackend
+from dualboot_switcher.classify import WINDOWS, pick_target
 from dualboot_switcher.model import (
     BootEntry, NotAdminError, NotUefiError, SwitcherError,
 )
@@ -103,10 +105,22 @@ class LinuxBackendTest(unittest.TestCase):
                 with self.assertRaisesRegex(SwitcherError, message):
                     self.backend((code, "", stderr)).switch(WINDOWS_ENTRY)
 
+    @mock.patch("platform.release", return_value="6.12.48+deb13-amd64")
+    @mock.patch("platform.freedesktop_os_release", return_value={"PRETTY_NAME": "LMDE 7 (gigi)"})
+    def test_system_info(self, _os_release, _release):
+        self.assertEqual(self.backend().system_info(),
+                         "LMDE 7 (gigi), kernel 6.12.48+deb13-amd64, UEFI")
+        (self.root / "sys/firmware/efi").rmdir()
+        self.assertTrue(self.backend().system_info().endswith(", legacy BIOS"))
+
+    @mock.patch("platform.freedesktop_os_release", side_effect=OSError)
+    def test_system_info_without_os_release(self, _os_release):
+        self.assertTrue(self.backend().system_info().startswith("Linux, kernel "))
+
 
 @unittest.skipIf(os.name == "nt", "builds a fake Linux /sys and /dev with symlinks")
 class LinuxDiskLabelTest(unittest.TestCase):
-    GUID = "e9843f70-5110-4f0e-9ec2-1e16ba0c3213"
+    GUID = "12345678-90ab-cdef-1234-567890abcdef"
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -155,10 +169,28 @@ class WindowsBackendTest(unittest.TestCase):
                               is_admin=lambda: is_admin)
 
     def test_list_entries_parses_bcdedit(self):
-        backend = self.backend((0, fixture("bcdedit-enum-firmware_PLACEHOLDER.txt"), ""))
+        backend = self.backend((0, fixture("bcdedit_firmware_en_us.txt"), ""))
         entries = backend.list_entries()
         self.assertEqual(self.run.calls, [[BCDEDIT, "/enum", "firmware"]])
         self.assertIn(DEBIAN_ENTRY, entries)
+
+    def test_real_output_gives_the_expected_commands(self):
+        backend = self.backend((0, fixture("bcdedit_firmware_en_us.txt"), ""))
+        target, _ = pick_target(backend.list_entries(), WINDOWS)
+        self.assertEqual(backend.commands(target), [
+            [BCDEDIT, "/set", "{fwbootmgr}", "bootsequence", "{00000000-0000-0000-0000-000000000001}"],
+            [SHUTDOWN, "/r", "/t", "0"],
+        ])
+        self.assertEqual(backend.describe(target), [
+            f"{BCDEDIT} /set {{fwbootmgr}} bootsequence {{00000000-0000-0000-0000-000000000001}}",
+            f"{SHUTDOWN} /r /t 0",
+        ])
+
+    def test_system_info(self):
+        with mock.patch("platform.version", return_value="10.0.22621"):
+            self.assertEqual(self.backend().system_info(), "Windows 10.0.22621, UEFI")
+            self.assertEqual(self.backend(firmware_type=1).system_info(),
+                             "Windows 10.0.22621, legacy BIOS")
 
     def test_bcdedit_and_shutdown_are_called_by_full_path(self):
         self.assertTrue(BCDEDIT.lower().endswith(r"\system32\bcdedit.exe"))

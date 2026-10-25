@@ -19,7 +19,7 @@ from tkinter import messagebox, ttk
 
 from . import __version__, config
 from .backend import get_backend
-from .classify import OS_NAMES, classify, pick_target, target_kind
+from .classify import OS_NAMES, OTHER, classify, pick_target, target_kind
 from .cli import format_table
 from .model import SwitcherError
 
@@ -145,10 +145,19 @@ class App:
         if with_command:
             ttk.Label(self.details, text="Command that will run:").pack(anchor="w")
             self.command_box = self._text_box(self.details)
-        ttk.Label(self.details, text="All boot entries:").pack(anchor="w")
-        self._set_text(self._text_box(self.details), format_table(self.entries))
-        copy = ttk.Button(self.details, text="Copy boot entries", command=lambda: self._copy(copy))
-        copy.pack(anchor="e")
+        ttk.Label(self.details, text="Boot entries:").pack(anchor="w")
+        self.table_box = self._text_box(self.details, scrollable=True)
+        row = ttk.Frame(self.details)
+        row.pack(fill="x")
+        # "other" entries, like bcdedit's {bootmgr}, are never targets and
+        # mostly confuse, so they're only shown on request.
+        self.show_other = tk.BooleanVar(value=False)
+        if any(classify(entry) == OTHER for entry in self.entries):
+            ttk.Checkbutton(row, text="Show other entries (advanced)", variable=self.show_other,
+                            command=self._update_table).pack(side="left")
+        copy = ttk.Button(row, text="Copy boot entries", command=lambda: self._copy(copy))
+        copy.pack(side="right")
+        self._update_table()
 
         def toggle():
             if self.details.winfo_manager():
@@ -180,20 +189,30 @@ class App:
         return row
 
     @staticmethod
-    def _text_box(parent):
-        box = tk.Text(parent, font="TkFixedFont", wrap="none", relief="solid",
+    def _text_box(parent, scrollable=False):
+        holder = ttk.Frame(parent)
+        holder.pack(fill="x", pady=(2, 8))
+        holder.columnconfigure(0, weight=1)
+        box = tk.Text(holder, font="TkFixedFont", wrap="none", relief="solid",
                       borderwidth=1, padx=6, pady=4, height=1, width=40)
-        box.pack(fill="x", pady=(2, 8))
+        box.grid(row=0, column=0, sticky="ew")
+        if scrollable:
+            down = _AutoScrollbar(holder, orient="vertical", command=box.yview)
+            down.grid(row=0, column=1, sticky="ns")
+            across = _AutoScrollbar(holder, orient="horizontal", command=box.xview)
+            across.grid(row=1, column=0, sticky="ew")
+            box.configure(yscrollcommand=down.set, xscrollcommand=across.set)
         return box
 
     @staticmethod
-    def _set_text(box, text):
+    def _set_text(box, text, max_rows=20, max_columns=None):
         lines = text.splitlines() or [""]
+        width = max(len(line) for line in lines) + 1
         box.configure(state="normal")
         box.delete("1.0", "end")
         box.insert("1.0", text)
-        box.configure(state="disabled", height=min(len(lines), 20),
-                      width=max(len(line) for line in lines) + 1)
+        box.configure(state="disabled", height=min(len(lines), max_rows),
+                      width=min(width, max_columns) if max_columns else width)
 
     # Actions
 
@@ -213,8 +232,15 @@ class App:
             self._set_text(self.command_box, "(choose what to restart into first)")
             self.restart_button.state(["disabled"])
 
+    def _update_table(self):
+        # Capped so the expanded window still fits a 1280x720 screen.
+        shown = [entry for entry in self.entries
+                 if self.show_other.get() or classify(entry) != OTHER]
+        self._set_text(self.table_box, format_table(shown), max_rows=10, max_columns=100)
+
     def _copy(self, button):
-        report = (f"Dual Boot Switcher {__version__} on {OS_NAMES[self.backend.current_os]}\n\n"
+        # Always every entry, "other" ones too: bug reports need all of them.
+        report = (f"Dual Boot Switcher {__version__} on {self.backend.system_info()}\n\n"
                   + format_table(self.entries))
         self.root.clipboard_clear()
         self.root.clipboard_append(report)
@@ -264,6 +290,17 @@ class App:
         if sys.stderr:
             traceback.print_exception(exc_type, error, tb)
         messagebox.showerror(TITLE, f"Unexpected error: {error!r}", parent=self.root)
+
+
+class _AutoScrollbar(ttk.Scrollbar):
+    """A scrollbar that hides itself while everything fits."""
+
+    def set(self, first, last):
+        if float(first) <= 0 and float(last) >= 1:
+            self.grid_remove()
+        else:
+            self.grid()
+        super().set(first, last)
 
 
 def _enable_dpi_awareness():

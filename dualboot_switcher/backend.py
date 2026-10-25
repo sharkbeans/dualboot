@@ -7,6 +7,7 @@ Both backends have the same methods:
     commands(entry)          -> the commands switch() runs, as argv lists
     describe(entry)          -> those commands as text, to show the user
     disk_label(entry)        -> which disk the entry is on, or None if unknown
+    system_info()            -> OS version and firmware mode, for bug reports
     switch(entry)            sets the one-time boot and reboots
 """
 

@@ -1,4 +1,5 @@
 import io
+import subprocess
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
@@ -6,13 +7,16 @@ from pathlib import Path
 from unittest import mock
 
 from dualboot_switcher import cli, config
+from dualboot_switcher.backend_windows import WindowsBackend
 from dualboot_switcher.classify import LINUX, WINDOWS
 from dualboot_switcher.model import BootEntry, SwitcherError
 
+from . import fixture
+
 WINDOWS_ENTRY = BootEntry(id="0000", label="Windows Boot Manager",
-                          path=r"\EFI\Microsoft\Boot\bootmgfw.efi")
-UBUNTU = BootEntry(id="{aaaa}", label="ubuntu", path=r"\EFI\ubuntu\shimx64.efi")
-FEDORA = BootEntry(id="{bbbb}", label="Fedora", path=r"\EFI\fedora\shimx64.efi")
+                          path=r"\EFI\Microsoft\Boot\bootmgfw.efi", active=True)
+UBUNTU = BootEntry(id="{aaaa-0001}", label="ubuntu", path=r"\EFI\ubuntu\shimx64.efi")
+FEDORA = BootEntry(id="{bbbb-0002}", label="Fedora", path=r"\EFI\fedora\shimx64.efi")
 USB = BootEntry(id="0017", label="USB CD")
 
 
@@ -34,8 +38,32 @@ class FakeBackend:
     def disk_label(self, entry):
         return "Test Disk, 512 GB"
 
+    def system_info(self):
+        return "TestOS 1.0, UEFI"
+
     def switch(self, entry):
         self.switched = entry
+
+
+def windows_backend(fixture_name):
+    """The real Windows backend, with bcdedit printing the given fixture."""
+    text = fixture(fixture_name)
+    return WindowsBackend(run=lambda argv, **kwargs: subprocess.CompletedProcess(argv, 0, text, ""),
+                          firmware_type=lambda: 2, is_admin=lambda: True)
+
+
+class FormatTableTest(unittest.TestCase):
+    def test_active_column_on_linux(self):
+        table = cli.format_table([WINDOWS_ENTRY, BootEntry(id="0010", label="Setup", active=False)])
+        self.assertEqual(table.splitlines()[0].split()[:3], ["ID", "ACTIVE", "KIND"])
+        self.assertEqual(table.splitlines()[2].split()[:3], ["0010", "no", "firmware"])
+
+    def test_no_active_column_when_unknown(self):
+        # bcdedit doesn't report the flag, so Windows tables leave it out.
+        table = cli.format_table(windows_backend("bcdedit_firmware_en_us.txt").list_entries())
+        self.assertNotIn("ACTIVE", table)
+        self.assertEqual(table.splitlines()[0].split(), ["ID", "KIND", "LABEL", "PATH"])
+        self.assertIn("{bootmgr}", table)
 
 
 class CliTest(unittest.TestCase):
@@ -98,13 +126,28 @@ class CliTest(unittest.TestCase):
 
     def test_target_is_remembered(self):
         backend = FakeBackend(WINDOWS, [UBUNTU, FEDORA])
-        code, out, _ = self.run_cli(backend, "switch", "--dry-run", "--target", "BBBB")
+        code, out, _ = self.run_cli(backend, "switch", "--dry-run", "--target", "BBBB-0002")
         self.assertEqual(code, 0)
-        self.assertIn("Target: {bbbb} Fedora", out)
-        self.assertEqual(config.load_choice(self.config_path), ("{bbbb}", "Fedora"))
+        self.assertIn("Target: {bbbb-0002} Fedora", out)
+        self.assertEqual(config.load_choice(self.config_path), ("{bbbb-0002}", "Fedora"))
         # Next time the remembered choice is used without --target.
         code, out, _ = self.run_cli(backend, "switch", "--dry-run")
-        self.assertIn("Target: {bbbb} Fedora", out)
+        self.assertIn("Target: {bbbb-0002} Fedora", out)
+
+    def test_picker_with_real_windows_output(self):
+        ubuntu = "{00000000-0000-0000-0000-000000000018}"
+        code, _, err = self.run_cli(windows_backend("bcdedit_firmware_two_linux.txt"),
+                                    "switch", "--dry-run")
+        self.assertEqual(code, 1)
+        self.assertIn(f"{ubuntu} (ubuntu)", err)
+        # Braces are optional when picking a Windows GUID.
+        code, out, _ = self.run_cli(windows_backend("bcdedit_firmware_two_linux.txt"),
+                                    "switch", "--dry-run", "--target", ubuntu.strip("{}"))
+        self.assertEqual(code, 0)
+        self.assertIn(f"bootsequence {ubuntu}", out)
+        code, out, _ = self.run_cli(windows_backend("bcdedit_firmware_two_linux.txt"),
+                                    "switch", "--dry-run")
+        self.assertIn(f"Target: {ubuntu} ubuntu", out)
 
     def test_target_must_be_a_candidate(self):
         backend = FakeBackend(LINUX, [WINDOWS_ENTRY, USB])
