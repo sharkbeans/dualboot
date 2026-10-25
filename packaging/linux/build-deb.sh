@@ -34,7 +34,7 @@ Package: dualboot-switcher
 Version: $DEB_VERSION
 Architecture: all
 Maintainer: sharkbeans <sharkbeans01@gmail.com>
-Depends: python3 (>= 3.9), python3-tk, efibootmgr, pkexec | policykit-1
+Depends: python3 (>= 3.10), python3-tk, efibootmgr, pkexec | policykit-1
 Section: admin
 Priority: optional
 Homepage: https://github.com/sharkbeans/dualboot

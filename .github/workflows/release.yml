@@ -1,0 +1,81 @@
+name: Release
+
+# On a v* tag: build the Windows .exe and the Linux .deb and publish them as a
+# GitHub Release (marked pre-release when the tag has a "-", like v0.1.0-rc1).
+# Run by hand (Actions > Release > Run workflow): build both and attach them to
+# the run as downloadable artifacts, without creating a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Take the version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: sed -i "s/^__version__ = .*/__version__ = \"${GITHUB_REF_NAME#v}\"/" dualboot_switcher/__init__.py
+      - run: python -m unittest
+      - run: python -m pip install pyinstaller==6.11.1
+      - run: ./packaging/windows/build-exe.ps1
+        shell: pwsh
+      - name: Put the version in the file name
+        shell: bash
+        run: |
+          VERSION=$(sed -nE 's/^__version__ = "(.*)"$/\1/p' dualboot_switcher/__init__.py)
+          mv dist/DualBootSwitcher.exe "dist/DualBootSwitcher-$VERSION.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/*.exe
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Take the version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: sed -i "s/^__version__ = .*/__version__ = \"${GITHUB_REF_NAME#v}\"/" dualboot_switcher/__init__.py
+      - run: python3 -m unittest
+      - run: ./packaging/linux/build-deb.sh
+      - name: Put the version in the file name
+        # The package version uses "~" (0.1.0~rc1), which GitHub doesn't
+        # allow in asset names, so the file is named with the tag's version.
+        run: |
+          VERSION=$(sed -nE 's/^__version__ = "(.*)"$/\1/p' dualboot_switcher/__init__.py)
+          mv dist/*.deb "dist/dualboot-switcher_${VERSION}_all.deb"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-deb
+          path: dist/*.deb
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Checksums
+        run: cd dist && sha256sum -- * > SHA256SUMS.txt
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PRERELEASE=""
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then PRERELEASE="--prerelease"; fi
+          gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+            --title "$GITHUB_REF_NAME" --generate-notes $PRERELEASE

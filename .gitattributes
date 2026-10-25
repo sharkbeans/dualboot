@@ -1,0 +1,4 @@
+# LF everywhere, including Windows checkouts: the bash scripts in
+# packaging/linux break with CRLF, and fixtures should match byte for byte.
+* text=auto eol=lf
+*.png binary
