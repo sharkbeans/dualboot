@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!--
+  Lets pkexec run the Dual Boot Switcher helper as root after asking for an
+  administrator password. auth_admin_keep remembers the password for a few
+  minutes. To make it passwordless, see "No password prompt" in the README.
+-->
+<policyconfig>
+  <vendor>Dual Boot Switcher</vendor>
+  <vendor_url>https://github.com/sharkbeans/dualboot</vendor_url>
+  <action id="io.github.sharkbeans.dualboot.switch">
+    <description>Restart into another operating system</description>
+    <message>Authentication is required to choose the next boot entry and restart</message>
+    <icon_name>system-reboot</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/dualboot-switcher/dualboot-switcher-helper</annotate>
+  </action>
+</policyconfig>

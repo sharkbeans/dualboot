@@ -1,0 +1,44 @@
+#!/bin/bash
+# Sets a one-time UEFI boot entry (BootNext) and reboots. The app runs it as
+# root through polkit:
+#
+#   pkexec /usr/libexec/dualboot-switcher/dualboot-switcher-helper <BOOTNUM>
+#
+# The .deb installs this file owned by root and not writable by anyone else.
+# Anyone who can edit it can run commands as root, so it must stay that way.
+#
+# It trusts nothing from the caller: the boot number must be four hex digits
+# and must name an entry that boots an EFI file from a disk partition, so it
+# can't be used to start firmware tools or boot from USB or the network.
+set -euo pipefail
+export PATH=/usr/sbin:/usr/bin:/sbin:/bin
+shopt -s nocasematch
+
+BOOTNUM="${1:-}"
+if [[ ! "$BOOTNUM" =~ ^[0-9A-F]{4}$ ]]; then
+    echo "Usage: $0 BOOTNUM (four hex digits, as shown by efibootmgr)" >&2
+    exit 2
+fi
+BOOTNUM="${BOOTNUM^^}"
+
+if [ ! -d /sys/firmware/efi ]; then
+    echo "This machine booted in legacy BIOS mode, so there are no UEFI boot entries" >&2
+    exit 1
+fi
+
+ENTRY=$(efibootmgr -v | grep -E "^Boot${BOOTNUM}[* ]" | head -1 || true)
+if [ -z "$ENTRY" ]; then
+    echo "Boot entry $BOOTNUM not found" >&2
+    exit 1
+fi
+if [[ "$ENTRY" != *"HD("*"/File(\\EFI\\"* ]]; then
+    echo "Boot entry $BOOTNUM doesn't boot an EFI file from a disk; refusing to use it" >&2
+    exit 1
+fi
+
+efibootmgr --bootnext "$BOOTNUM" >/dev/null
+if ! systemctl reboot; then
+    echo "BootNext is set to $BOOTNUM, but the reboot failed. Reboot manually," \
+         "or undo it with: sudo efibootmgr --delete-bootnext" >&2
+    exit 1
+fi

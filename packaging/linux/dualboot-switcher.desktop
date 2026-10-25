@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Dual Boot Switcher
+GenericName=Restart into Another OS
+Comment=Restart straight into the other operating system, skipping the boot menu
+Exec=dualboot-switcher
+Icon=system-reboot
+Terminal=false
+Categories=System;
+Keywords=reboot;restart;windows;dual boot;grub;uefi;

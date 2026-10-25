@@ -1,0 +1,12 @@
+#!/usr/bin/python3 -I
+# /usr/bin/dualboot-switcher, installed by the .deb.
+# -I (isolated mode) ignores PYTHONPATH and user site-packages, so only the
+# root-owned copy of the app in /usr/lib/dualboot-switcher is imported.
+import sys
+
+sys.path.insert(0, "/usr/lib/dualboot-switcher")
+sys.dont_write_bytecode = True  # keep /usr/lib clean if root ever runs it
+
+from dualboot_switcher.__main__ import main
+
+sys.exit(main())
