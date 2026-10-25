@@ -74,10 +74,11 @@ class LinuxBackendTest(unittest.TestCase):
             backend.list_entries()
 
     def test_command_and_description(self):
-        backend = self.backend()
-        self.assertEqual(backend.commands(WINDOWS_ENTRY), [["pkexec", str(self.helper), "0000"]])
+        backend = LinuxBackend(helper="/usr/libexec/test/helper")
+        self.assertEqual(backend.commands(WINDOWS_ENTRY),
+                         [["pkexec", "/usr/libexec/test/helper", "0000"]])
         description = backend.describe(WINDOWS_ENTRY)
-        self.assertEqual(description[0], f"pkexec {self.helper} 0000")
+        self.assertEqual(description[0], "pkexec /usr/libexec/test/helper 0000")
         self.assertIn("efibootmgr --bootnext 0000 && systemctl reboot", description[1])
 
     def test_switch_runs_helper_through_pkexec(self):

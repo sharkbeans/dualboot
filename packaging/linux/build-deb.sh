@@ -10,7 +10,9 @@ REPO=$(cd "$(dirname "$0")/../.." && pwd)
 VERSION=$(sed -nE 's/^__version__ = "(.*)"$/\1/p' "$REPO/dualboot_switcher/__init__.py")
 # Debian sorts "~" before everything, so 0.1.0~rc1 comes before 0.1.0.
 DEB_VERSION=${VERSION//-/\~}
-OUT="$REPO/dist/dualboot-switcher_${DEB_VERSION}_all.deb"
+# The file name keeps the "-" (0.1.0-rc1): GitHub doesn't allow "~" in
+# release asset names.
+OUT="$REPO/dist/dualboot-switcher_${VERSION}_all.deb"
 
 STAGE=$(mktemp -d)
 trap 'rm -rf "$STAGE"' EXIT
